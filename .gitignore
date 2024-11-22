@@ -1,4 +1,5 @@
 venv/
+neopy1venv/
 
 *.pyc
 __pycache__/

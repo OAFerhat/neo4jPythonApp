@@ -10,5 +10,5 @@ def get_index():
         "NEO4J_USERNAME": current_app.config.get('NEO4J_USERNAME'),
         "NEO4J_PASSWORD": current_app.config.get('NEO4J_PASSWORD'),
         "NEO4J_DATABASE": current_app.config.get('NEO4J_DATABASE'),
-        "JWT_SECRET": current_app.config.get('JWT_SECRET'),
+        "JWT_SECRET": current_app.config.get('JWT_SECRET_KEY'),  # Changed from JWT_SECRET to JWT_SECRET_KEY
     })
