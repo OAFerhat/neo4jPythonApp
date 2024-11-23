@@ -9,10 +9,8 @@ from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 
 from api.exceptions.notfound import NotFoundException
-
 from .exceptions.badrequest import BadRequestException
 from .exceptions.validation import ValidationException
-
 from .neo4j import init_driver
 
 from .routes.auth import auth_routes
@@ -58,6 +56,15 @@ def create_app(test_config=None):
     # JWT
     jwt = JWTManager(app)
 
+    # Add user loader callback for Flask-JWT-Extended
+    @jwt.user_lookup_loader
+    def user_lookup_callback(_jwt_header, jwt_data):
+        return {
+            "userId": jwt_data["sub"],
+            "email": jwt_data["email"],
+            "name": jwt_data["name"]
+        }
+
     CORS(app, 
         resources={r"/*": {"origins": ["http://localhost:3000", "http://127.0.0.1:3000"]}}
     )
@@ -90,7 +97,5 @@ def create_app(test_config=None):
     @app.errorhandler(NotFoundException)
     def handle_not_found_exception(err):
         return {"message": str(err)}, 404
-
-
 
     return app

@@ -13,7 +13,7 @@ def register():
     password = form_data['password']
     name = form_data['name']
 
-    dao = AuthDAO(current_app.driver, current_app.config.get('SECRET_KEY'))
+    dao = AuthDAO(current_app.driver, current_app.config.get('JWT_SECRET_KEY'))
 
     user = dao.register(email, password, name)
 
@@ -27,7 +27,7 @@ def login():
     email = form_data['email']
     password = form_data['password']
 
-    dao = AuthDAO(current_app.driver, current_app.config.get('SECRET_KEY'))
+    dao = AuthDAO(current_app.driver, current_app.config.get('JWT_SECRET_KEY'))
 
     user = dao.authenticate(email, password)
 
