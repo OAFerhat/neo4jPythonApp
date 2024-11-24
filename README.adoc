@@ -42,3 +42,17 @@ export FLASK_APP=api
 export FLASK_ENV=development
 flask run
 
+
+
+
+---- 
+Virtual environment:            neopy1venv
+App folder :                    /Users/Tresorit/Code/CascadeProjects/neo4jPythonApp
+Start the flask server:         export FLASK_APP=api && export FLASK_ENV=development && export FLASK_RUN_PORT=3000 && ./neopy1venv/bin/flask run
+stop the server:                ctrl + c
+kill all processes:             killall python
+view running processes:        lsof -i :3000
+kill 2 processes:               kill -9 223 224
+kill all processes:             killall python
+run the tests:                  ./neopy1venv/bin/pytest tests/ -v
+run one tests:                  ./neopy1venv/bin/pytest tests/01_connect_to_neo4j__test.py
