@@ -79,7 +79,7 @@ def save_rating(movie_id):
     dao = RatingDAO(current_app.driver)
 
     # Save the rating
-    output = dao.add(user_id, movie_id, rating)
+    output = dao.add_rating(user_id, movie_id, rating)
 
     # Return the output
     return jsonify(output)
