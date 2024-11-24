@@ -1,154 +1,192 @@
 from api.data import popular, goodfellas
-
 from api.exceptions.notfound import NotFoundException
 from api.data import popular
+from api.db import get_db_session, get_db_transaction
 
 class MovieDAO:
-    """
-    The constructor expects an instance of the Neo4j Driver, which will be
-    used to interact with Neo4j.
-    """
     def __init__(self, driver):
         self.driver = driver
 
-    """
-     This method should return a paginated list of movies ordered by the `sort`
-     parameter and limited to the number passed as `limit`.  The `skip` variable should be
-     used to skip a certain number of rows.
+    def get_user_favorites(self, session, user_id):
+        if user_id is None:
+            return []
 
-     If a user_id value is suppled, a `favorite` boolean property should be returned to
-     signify whether the user has added the movie to their "My Favorites" list.
-    """
-    # tag::all[]
+        with get_db_transaction(session) as tx:
+            result = tx.run("""
+                MATCH (u:User {userId: $userId})-[:HAS_FAVORITE]->(m:Movie)
+                RETURN collect(m.tmdbId) AS favorites
+            """, userId=user_id)
+
+            record = result.single()
+            return record["favorites"] if record else []
+
     def all(self, sort, order, limit=6, skip=0, user_id=None):
-        # Define the Unit of Work
-        def get_movies(tx, sort, order, limit, skip, user_id):
-            # Define the cypher statement
-            cypher = """
-                MATCH (m:Movie)
-                WHERE m.`{0}` IS NOT NULL
-                RETURN m {{ .* }} AS movie
-                ORDER BY m.`{0}` {1}
+        with get_db_session(self.driver) as session:
+            # Get user favorites first
+            favorites = self.get_user_favorites(session, user_id)
+            
+            # Execute main query
+            with get_db_transaction(session) as tx:
+                order_direction = "DESC" if order.upper() == "DESC" else "ASC"
+                cypher = f"""
+                    MATCH (m:Movie)
+                    WHERE m.`{sort}` IS NOT NULL
+                    RETURN m {{
+                        .*,
+                        favorite: m.tmdbId IN $favorites
+                    }} AS movie
+                    ORDER BY m.`{sort}` {order_direction}
+                    SKIP $skip
+                    LIMIT $limit
+                """
+
+                result = tx.run(
+                    cypher,
+                    favorites=favorites,
+                    skip=skip,
+                    limit=limit
+                )
+
+                return [row.get("movie") for row in result]
+
+    def get_by_genre(self, name, sort='title', order='ASC', limit=6, skip=0, user_id=None):
+        with get_db_session(self.driver) as session:
+            # Get user favorites first
+            favorites = self.get_user_favorites(session, user_id)
+            
+            # Execute main query
+            with get_db_transaction(session) as tx:
+                order_direction = "DESC" if order.upper() == "DESC" else "ASC"
+                cypher = f"""
+                    MATCH (m:Movie)-[:IN_GENRE]->(g:Genre {{name: $name}})
+                    WHERE m.`{sort}` IS NOT NULL
+                    RETURN m {{
+                        .*,
+                        favorite: m.tmdbId IN $favorites
+                    }} AS movie
+                    ORDER BY m.`{sort}` {order_direction}
+                    SKIP $skip
+                    LIMIT $limit
+                """
+
+                result = tx.run(
+                    cypher,
+                    name=name,
+                    favorites=favorites,
+                    skip=skip,
+                    limit=limit
+                )
+
+                return [row.get("movie") for row in result]
+
+    def get_for_actor(self, id, sort='title', order='ASC', limit=6, skip=0, user_id=None):
+        with get_db_session(self.driver) as session:
+            favorites = self.get_user_favorites(session, user_id)
+            
+            with get_db_transaction(session) as tx:
+                order_direction = "DESC" if order.upper() == "DESC" else "ASC"
+                cypher = f"""
+                    MATCH (:Person {{tmdbId: $id}})-[:ACTED_IN]->(m:Movie)
+                    WHERE m.`{sort}` IS NOT NULL
+                    RETURN m {{
+                        .*,
+                        favorite: m.tmdbId IN $favorites
+                    }} AS movie
+                    ORDER BY m.`{sort}` {order_direction}
+                    SKIP $skip
+                    LIMIT $limit
+                """
+
+                result = tx.run(cypher, id=id, limit=limit, skip=skip, favorites=favorites)
+                return [row.get("movie") for row in result]
+
+    def get_for_director(self, id, sort='title', order='ASC', limit=6, skip=0, user_id=None):
+        with get_db_session(self.driver) as session:
+            favorites = self.get_user_favorites(session, user_id)
+            
+            with get_db_transaction(session) as tx:
+                order_direction = "DESC" if order.upper() == "DESC" else "ASC"
+                cypher = f"""
+                    MATCH (:Person {{tmdbId: $id}})-[:DIRECTED]->(m:Movie)
+                    WHERE m.`{sort}` IS NOT NULL
+                    RETURN m {{
+                        .*,
+                        favorite: m.tmdbId IN $favorites
+                    }} AS movie
+                    ORDER BY m.`{sort}` {order_direction}
+                    SKIP $skip
+                    LIMIT $limit
+                """
+
+                result = tx.run(cypher, id=id, limit=limit, skip=skip, favorites=favorites)
+                return [row.get("movie") for row in result]
+
+    def find_by_id(self, id, user_id=None):
+        with get_db_session(self.driver) as session:
+            favorites = self.get_user_favorites(session, user_id)
+            
+            with get_db_transaction(session) as tx:
+                cypher = """
+                    MATCH (m:Movie {tmdbId: $id})
+                    OPTIONAL MATCH (m)<-[r:ACTED_IN]-(a:Person)
+                    OPTIONAL MATCH (m)<-[d:DIRECTED]-(dir:Person)
+                    OPTIONAL MATCH (m)-[g:IN_GENRE]->(genre:Genre)
+                    OPTIONAL MATCH (m)<-[rated:RATED]-()
+                    WITH m, 
+                         collect(DISTINCT { 
+                            name: a.name,
+                            id: a.tmdbId,
+                            poster: a.poster,
+                            roles: r.roles
+                         }) AS actors,
+                         collect(DISTINCT {
+                            name: dir.name,
+                            id: dir.tmdbId,
+                            poster: dir.poster
+                         }) AS directors,
+                         collect(DISTINCT genre.name) AS genres,
+                         count(rated) AS ratingCount
+                    RETURN m {
+                        .*,
+                        actors: actors,
+                        directors: directors,
+                        genres: genres,
+                        ratingCount: ratingCount,
+                        favorite: m.tmdbId IN $favorites
+                    } AS movie
+                """
+
+                result = tx.run(
+                    cypher,
+                    id=id,
+                    favorites=favorites
+                )
+                
+                record = result.single()
+                if record is None:
+                    raise NotFoundException()
+
+                return record.get("movie")
+
+    def get_similar_movies(self, id, limit=6, skip=0, user_id=None):
+        with get_db_session(self.driver) as session:
+            favorites = self.get_user_favorites(session, user_id)
+
+            with get_db_transaction(session) as tx:
+                cypher = """
+                MATCH (:Movie {tmdbId: $id})-[:IN_GENRE|ACTED_IN|DIRECTED]->()<-[:IN_GENRE|ACTED_IN|DIRECTED]-(m)
+                WHERE m.imdbRating IS NOT NULL
+                WITH m, count(*) AS inCommon
+                WITH m, inCommon, m.imdbRating * inCommon AS score
+                ORDER BY score DESC
                 SKIP $skip
                 LIMIT $limit
-            """.format(sort, order)
+                RETURN m {
+                    .*,
+                    score: score,
+                    favorite: m.tmdbId IN $favorites
+                } AS movie
+                """
 
-            # Run the statement within the transaction passed as the first argument
-            result = tx.run(cypher, limit=limit, skip=skip, user_id=user_id)
-
-            # Extract a list of Movies from the Result
-            return [row.value("movie") for row in result]
-
-        with self.driver.session() as session:
-            return session.execute_read(get_movies, sort, order, limit, skip, user_id)
-    # end::all[]
-
-    """
-    This method should return a paginated list of movies that have a relationship to the
-    supplied Genre.
-
-    Results should be ordered by the `sort` parameter, and in the direction specified
-    in the `order` parameter.
-    Results should be limited to the number passed as `limit`.
-    The `skip` variable should be used to skip a certain number of rows.
-
-    If a user_id value is suppled, a `favorite` boolean property should be returned to
-    signify whether the user has added the movie to their "My Favorites" list.
-    """
-    # tag::getByGenre[]
-    def get_by_genre(self, name, sort='title', order='ASC', limit=6, skip=0, user_id=None):
-        # TODO: Get Movies in a Genre
-        # TODO: The Cypher string will be formated so remember to escape the braces: {{name: $name}}
-        # MATCH (m:Movie)-[:IN_GENRE]->(:Genre {name: $name})
-
-        return popular[skip:limit]
-    # end::getByGenre[]
-
-    """
-    This method should return a paginated list of movies that have an ACTED_IN relationship
-    to a Person with the id supplied
-
-    Results should be ordered by the `sort` parameter, and in the direction specified
-    in the `order` parameter.
-    Results should be limited to the number passed as `limit`.
-    The `skip` variable should be used to skip a certain number of rows.
-
-    If a user_id value is suppled, a `favorite` boolean property should be returned to
-    signify whether the user has added the movie to their "My Favorites" list.
-    """
-    # tag::getForActor[]
-    def get_for_actor(self, id, sort='title', order='ASC', limit=6, skip=0, user_id=None):
-        # TODO: Get Movies for an Actor
-        # TODO: The Cypher string will be formated so remember to escape the braces: {{tmdbId: $id}}
-        # MATCH (:Person {tmdbId: $id})-[:ACTED_IN]->(m:Movie)
-
-        return popular[skip:limit]
-    # end::getForActor[]
-
-    """
-    This method should return a paginated list of movies that have an DIRECTED relationship
-    to a Person with the id supplied
-
-    Results should be ordered by the `sort` parameter, and in the direction specified
-    in the `order` parameter.
-    Results should be limited to the number passed as `limit`.
-    The `skip` variable should be used to skip a certain number of rows.
-
-    If a user_id value is suppled, a `favorite` boolean property should be returned to
-    signify whether the user has added the movie to their "My Favorites" list.
-    """
-    # tag::getForDirector[]
-    def get_for_director(self, id, sort='title', order='ASC', limit=6, skip=0, user_id=None):
-        # TODO: Get Movies directed by a Person
-        # TODO: The Cypher string will be formated so remember to escape the braces: {{name: $name}}
-        # MATCH (:Person {tmdbId: $id})-[:DIRECTED]->(m:Movie)
-
-        return popular[skip:limit]
-    # end::getForDirector[]
-
-    """
-    This method find a Movie node with the ID passed as the `id` parameter.
-    Along with the returned payload, a list of actors, directors, and genres should
-    be included.
-    The number of incoming RATED relationships should also be returned as `ratingCount`
-
-    If a user_id value is suppled, a `favorite` boolean property should be returned to
-    signify whether the user has added the movie to their "My Favorites" list.
-    """
-    # tag::findById[]
-    def find_by_id(self, id, user_id=None):
-        # TODO: Find a movie by its ID
-        # MATCH (m:Movie {tmdbId: $id})
-
-        return goodfellas
-    # end::findById[]
-
-    """
-    This method should return a paginated list of similar movies to the Movie with the
-    id supplied.  This similarity is calculated by finding movies that have many first
-    degree connections in common: Actors, Directors and Genres.
-
-    Results should be ordered by the `sort` parameter, and in the direction specified
-    in the `order` parameter.
-    Results should be limited to the number passed as `limit`.
-    The `skip` variable should be used to skip a certain number of rows.
-
-    If a user_id value is suppled, a `favorite` boolean property should be returned to
-    signify whether the user has added the movie to their "My Favorites" list.
-    """
-    # tag::getSimilarMovies[]
-    def get_similar_movies(self, id, limit=6, skip=0, user_id=None):
-        # TODO: Get similar movies from Neo4j
-
-        return popular[skip:limit]
-    # end::getSimilarMovies[]
-
-
-    """
-    This function should return a list of tmdbId properties for the movies that
-    the user has added to their 'My Favorites' list.
-    """
-    # tag::getUserFavorites[]
-    def get_user_favorites(self, tx, user_id):
-        return []
-    # end::getUserFavorites[]
+                result = tx.run(cypher, id=id, limit=limit, skip=skip, favorites=favorites)
+                return [row.get("movie") for row in result]

@@ -1,5 +1,5 @@
-from api.data import genres
 from api.exceptions.notfound import NotFoundException
+from api.db import get_db_session, get_db_transaction
 
 class GenreDAO:
     """
@@ -7,7 +7,7 @@ class GenreDAO:
     used to interact with Neo4j.
     """
     def __init__(self, driver):
-        self.driver=driver
+        self.driver = driver
 
     """
     This method should return a list of genres from the database with a
@@ -25,11 +25,28 @@ class GenreDAO:
     """
     # tag::all[]
     def all(self):
-        # TODO: Open a new session
-        # TODO: Define a unit of work to Get a list of Genres
-        # TODO: Execute within a Read Transaction
+        # Define a unit of work to Get a list of Genres
+        with get_db_session(self.driver) as session:
+            with get_db_transaction(session) as tx:
+                result = tx.run("""
+                    MATCH (g:Genre)
+                    WHERE g.name <> '(no genres listed)'
+                    CALL {
+                        WITH g
+                        MATCH (g)<-[:IN_GENRE]-(m:Movie)
+                        WHERE m.imdbRating IS NOT NULL AND m.poster IS NOT NULL
+                        RETURN m.poster AS poster
+                        ORDER BY m.imdbRating DESC LIMIT 1
+                    }
+                    RETURN g {
+                        .*,
+                        movies: count { (g)<-[:IN_GENRE]-(:Movie) },
+                        poster: poster
+                    } AS genre
+                    ORDER BY g.name ASC
+                """)
 
-        return genres
+                return [row.get("genre") for row in result]
     # end::all[]
 
 
@@ -41,9 +58,62 @@ class GenreDAO:
     """
     # tag::find[]
     def find(self, name):
-        # TODO: Open a new session
-        # TODO: Define a unit of work to find the genre by it's name
-        # TODO: Execute within a Read Transaction
+        # Define a unit of work to find the genre by it's name
+        with get_db_session(self.driver) as session:
+            with get_db_transaction(session) as tx:
+                result = tx.run("""
+                    MATCH (g:Genre {name: $name})<-[:IN_GENRE]-(m:Movie)
+                    WHERE m.imdbRating IS NOT NULL AND m.poster IS NOT NULL AND g.name <> '(no genres listed)'
+                    WITH g, m
+                    ORDER BY m.imdbRating DESC
+                    WITH g, head(collect(m)) AS movie
+                    RETURN g {
+                        .name,
+                        movies: count { (g)<-[:IN_GENRE]-() },
+                        poster: movie.poster
+                    } AS genre
+                """, name=name)
 
-        return [g for g in genres if g["name"] == name][0]
+                record = result.single()
+                # If no records are found raise a NotFoundException
+                if record is None:
+                    raise NotFoundException()
+
+                return record.get("genre")
     # end::find[]
+
+    def get_by_genre(self, name, sort='title', order='ASC', limit=6, skip=0, user_id=None):
+        with get_db_session(self.driver) as session:
+            with get_db_transaction(session) as tx:
+                # Get user favorites first
+                favorites = []
+                if user_id is not None:
+                    fav_result = tx.run("""
+                        MATCH (u:User {userId: $userId})-[:HAS_FAVORITE]->(m)
+                        RETURN collect(m.tmdbId) as favorites
+                    """, userId=user_id)
+                    favorites = fav_result.single()["favorites"]
+
+                # Execute main query
+                order_direction = "DESC" if order.upper() == "DESC" else "ASC"
+                cypher = f"""
+                    MATCH (m:Movie)-[:IN_GENRE]->(g:Genre {{name: $name}})
+                    WHERE m.`{sort}` IS NOT NULL
+                    RETURN m {{
+                        .*,
+                        favorite: m.tmdbId IN $favorites
+                    }} AS movie
+                    ORDER BY m.`{sort}` {order_direction}
+                    SKIP $skip
+                    LIMIT $limit
+                """
+
+                result = tx.run(
+                    cypher,
+                    name=name,
+                    favorites=favorites,
+                    skip=skip,
+                    limit=limit
+                )
+
+                return [row.get("movie") for row in result]

@@ -1,6 +1,7 @@
+import os
 import pytest
 
-from api.neo4j import get_driver
+from api.neo4j import get_driver, driver_context
 from api.dao.ratings import RatingDAO
 
 movie = '769'
@@ -11,28 +12,26 @@ rating = 5
 @pytest.fixture(autouse=True)
 def before_all(app):
     with app.app_context():
-        driver = get_driver()
-
-        def merge_data(tx):
-            return tx.run("""
-            MERGE (u:User {userId: $user})
-            SET u.email = $email
-            MERGE (m:Movie {tmdbId: $movie})
-            """, user=user, movie=movie, email=email).consume()
-
-        with driver.session() as session:
-            session.execute_write(merge_data)
-            session.close()
+        uri = app.config.get('NEO4J_URI')
+        username = app.config.get('NEO4J_USERNAME')
+        password = app.config.get('NEO4J_PASSWORD')
+        
+        with driver_context(uri, username, password) as driver:
+            with driver.session() as session:
+                session.execute_write(lambda tx: tx.run("""
+                    MERGE (u:User {userId: $user})
+                    SET u.email = $email
+                    MERGE (m:Movie {tmdbId: $movie})
+                """, user=user, movie=movie, email=email).consume())
 
 def test_store_integer(app):
     with app.app_context():
-        driver = get_driver()
-
-        dao = RatingDAO(driver)
-
-        output = dao.add(user, movie, rating)
-
-        assert output["tmdbId"] == movie
-        assert output["rating"] is rating
-
-
+        uri = app.config.get('NEO4J_URI')
+        username = app.config.get('NEO4J_USERNAME')
+        password = app.config.get('NEO4J_PASSWORD')
+        
+        with driver_context(uri, username, password) as driver:
+            dao = RatingDAO(driver)
+            output = dao.add_rating(user, movie, rating)
+            assert output["tmdbId"] == movie
+            assert output["rating"] is rating

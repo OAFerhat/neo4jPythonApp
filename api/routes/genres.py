@@ -16,19 +16,19 @@ def get_index():
 
     return jsonify(output)
 
-@genre_routes.get('/<name>/')
-def get_genre(name):
+@genre_routes.get('/<genre_name>/')
+def get_genre(genre_name):
     # Create the DAO
     dao = GenreDAO(current_app.driver)
 
     # Get the Genre
-    output = dao.find(name)
+    output = dao.find(genre_name)
 
     return jsonify(output)
 
-@genre_routes.get('/<name>/movies')
+@genre_routes.get('/<genre_name>/movies')
 @jwt_required(optional=True)
-def get_genre_movies(name):
+def get_genre_movies(genre_name):
     # Get User ID from JWT Auth
     user_id = current_user["sub"] if current_user != None else None
 
@@ -41,8 +41,7 @@ def get_genre_movies(name):
     # Create the DAO
     dao = MovieDAO(current_app.driver)
 
-    # Get the Genre
-    output = dao.get_by_genre(name, sort, order, limit, skip, user_id)
+    # Get Movies by Genre
+    output = dao.get_by_genre(genre_name, sort, order, limit, skip, user_id)
 
     return jsonify(output)
-

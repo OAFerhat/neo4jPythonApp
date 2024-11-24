@@ -14,8 +14,13 @@ def get_profile():
 @account_routes.route('/favorites', methods=['GET'])
 @jwt_required()
 def get_favorites():
-    # Get user ID from JWT
-    user_id = current_user["sub"]
+    # Get user ID from JWT - safely access userId
+    if not isinstance(current_user, dict):
+        return jsonify({"error": "Invalid user data"}), 401
+    
+    user_id = current_user.get("userId")
+    if not user_id:
+        return jsonify({"error": "User ID not found"}), 401
 
     # Get search parameters
     sort = request.args.get("sort", "title")
@@ -33,8 +38,13 @@ def get_favorites():
 @account_routes.route('/favorites/<movie_id>', methods=['POST', 'DELETE'])
 @jwt_required()
 def add_favorite(movie_id):
-    # Get user ID from JWT
-    user_id = current_user["sub"]
+    # Get user ID from JWT - safely access userId
+    if not isinstance(current_user, dict):
+        return jsonify({"error": "Invalid user data"}), 401
+    
+    user_id = current_user.get("userId")
+    if not user_id:
+        return jsonify({"error": "User ID not found"}), 401
 
     # Create the DAO
     dao = FavoriteDAO(current_app.driver)
@@ -53,8 +63,13 @@ def add_favorite(movie_id):
 @account_routes.route('/ratings/<movie_id>', methods=['POST'])
 @jwt_required()
 def save_rating(movie_id):
-    # Get user ID from JWT
-    user_id = current_user["sub"]
+    # Get user ID from JWT - safely access userId
+    if not isinstance(current_user, dict):
+        return jsonify({"error": "Invalid user data"}), 401
+    
+    user_id = current_user.get("userId")
+    if not user_id:
+        return jsonify({"error": "User ID not found"}), 401
 
     # Get rating from Request
     form_data = request.get_json()
@@ -68,4 +83,3 @@ def save_rating(movie_id):
 
     # Return the output
     return jsonify(output)
-

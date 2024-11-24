@@ -1,0 +1,319 @@
+[
+    {
+      "keys": [
+        "nodes",
+        "relationships"
+      ],
+      "length": 2,
+      "_fields": [
+        [
+          {
+            "identity": {
+              "low": -100,
+              "high": -1
+            },
+            "labels": [
+              "Movie"
+            ],
+            "properties": {
+              "name": "Movie",
+              "indexes": [
+                "year",
+                "imdbRating",
+                "released",
+                "imdbId",
+                "title",
+                "tagline"
+              ],
+              "constraints": [
+                "Constraint( id=77, name='constraint_737d9c1d', type='UNIQUENESS', schema=(:Movie {tmdbId}), ownedIndex=61 )",
+                "Constraint( id=75, name='constraint_3d5fcb7f', type='UNIQUENESS', schema=(:Movie {movieId}), ownedIndex=59 )"
+              ]
+            },
+            "elementId": "-100"
+          },
+          {
+            "identity": {
+              "low": -102,
+              "high": -1
+            },
+            "labels": [
+              "User"
+            ],
+            "properties": {
+              "name": "User",
+              "indexes": [
+                "name"
+              ],
+              "constraints": [
+                "Constraint( id=6, name='UserEmailUnique', type='UNIQUENESS', schema=(:User {email}), ownedIndex=3 )",
+                "Constraint( id=76, name='constraint_3b27b0', type='UNIQUENESS', schema=(:User {userId}), ownedIndex=64 )"
+              ]
+            },
+            "elementId": "-102"
+          },
+          {
+            "identity": {
+              "low": -103,
+              "high": -1
+            },
+            "labels": [
+              "Actor"
+            ],
+            "properties": {
+              "name": "Actor",
+              "indexes": [],
+              "constraints": []
+            },
+            "elementId": "-103"
+          },
+          {
+            "identity": {
+              "low": -104,
+              "high": -1
+            },
+            "labels": [
+              "Director"
+            ],
+            "properties": {
+              "name": "Director",
+              "indexes": [],
+              "constraints": []
+            },
+            "elementId": "-104"
+          },
+          {
+            "identity": {
+              "low": -101,
+              "high": -1
+            },
+            "labels": [
+              "Genre"
+            ],
+            "properties": {
+              "name": "Genre",
+              "indexes": [],
+              "constraints": [
+                "Constraint( id=74, name='constraint_f8689281', type='UNIQUENESS', schema=(:Genre {name}), ownedIndex=62 )"
+              ]
+            },
+            "elementId": "-101"
+          },
+          {
+            "identity": {
+              "low": -105,
+              "high": -1
+            },
+            "labels": [
+              "Person"
+            ],
+            "properties": {
+              "name": "Person",
+              "indexes": [
+                "name"
+              ],
+              "constraints": [
+                "Constraint( id=73, name='constraint_4499eae9', type='UNIQUENESS', schema=(:Person {tmdbId}), ownedIndex=63 )"
+              ]
+            },
+            "elementId": "-105"
+          }
+        ],
+        [
+          {
+            "identity": {
+              "low": -102,
+              "high": -1
+            },
+            "start": {
+              "low": -103,
+              "high": -1
+            },
+            "end": {
+              "low": -100,
+              "high": -1
+            },
+            "type": "ACTED_IN",
+            "properties": {
+              "name": "ACTED_IN"
+            },
+            "elementId": "-102",
+            "startNodeElementId": "-103",
+            "endNodeElementId": "-100"
+          },
+          {
+            "identity": {
+              "low": -103,
+              "high": -1
+            },
+            "start": {
+              "low": -104,
+              "high": -1
+            },
+            "end": {
+              "low": -100,
+              "high": -1
+            },
+            "type": "ACTED_IN",
+            "properties": {
+              "name": "ACTED_IN"
+            },
+            "elementId": "-103",
+            "startNodeElementId": "-104",
+            "endNodeElementId": "-100"
+          },
+          {
+            "identity": {
+              "low": -104,
+              "high": -1
+            },
+            "start": {
+              "low": -105,
+              "high": -1
+            },
+            "end": {
+              "low": -100,
+              "high": -1
+            },
+            "type": "ACTED_IN",
+            "properties": {
+              "name": "ACTED_IN"
+            },
+            "elementId": "-104",
+            "startNodeElementId": "-105",
+            "endNodeElementId": "-100"
+          },
+          {
+            "identity": {
+              "low": -108,
+              "high": -1
+            },
+            "start": {
+              "low": -102,
+              "high": -1
+            },
+            "end": {
+              "low": -100,
+              "high": -1
+            },
+            "type": "HAS_FAVORITE",
+            "properties": {
+              "name": "HAS_FAVORITE"
+            },
+            "elementId": "-108",
+            "startNodeElementId": "-102",
+            "endNodeElementId": "-100"
+          },
+          {
+            "identity": {
+              "low": -101,
+              "high": -1
+            },
+            "start": {
+              "low": -102,
+              "high": -1
+            },
+            "end": {
+              "low": -100,
+              "high": -1
+            },
+            "type": "RATED",
+            "properties": {
+              "name": "RATED"
+            },
+            "elementId": "-101",
+            "startNodeElementId": "-102",
+            "endNodeElementId": "-100"
+          },
+          {
+            "identity": {
+              "low": -100,
+              "high": -1
+            },
+            "start": {
+              "low": -100,
+              "high": -1
+            },
+            "end": {
+              "low": -101,
+              "high": -1
+            },
+            "type": "IN_GENRE",
+            "properties": {
+              "name": "IN_GENRE"
+            },
+            "elementId": "-100",
+            "startNodeElementId": "-100",
+            "endNodeElementId": "-101"
+          },
+          {
+            "identity": {
+              "low": -107,
+              "high": -1
+            },
+            "start": {
+              "low": -105,
+              "high": -1
+            },
+            "end": {
+              "low": -100,
+              "high": -1
+            },
+            "type": "DIRECTED",
+            "properties": {
+              "name": "DIRECTED"
+            },
+            "elementId": "-107",
+            "startNodeElementId": "-105",
+            "endNodeElementId": "-100"
+          },
+          {
+            "identity": {
+              "low": -106,
+              "high": -1
+            },
+            "start": {
+              "low": -104,
+              "high": -1
+            },
+            "end": {
+              "low": -100,
+              "high": -1
+            },
+            "type": "DIRECTED",
+            "properties": {
+              "name": "DIRECTED"
+            },
+            "elementId": "-106",
+            "startNodeElementId": "-104",
+            "endNodeElementId": "-100"
+          },
+          {
+            "identity": {
+              "low": -105,
+              "high": -1
+            },
+            "start": {
+              "low": -103,
+              "high": -1
+            },
+            "end": {
+              "low": -100,
+              "high": -1
+            },
+            "type": "DIRECTED",
+            "properties": {
+              "name": "DIRECTED"
+            },
+            "elementId": "-105",
+            "startNodeElementId": "-103",
+            "endNodeElementId": "-100"
+          }
+        ]
+      ],
+      "_fieldLookup": {
+        "nodes": 0,
+        "relationships": 1
+      }
+    }
+  ]

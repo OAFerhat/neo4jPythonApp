@@ -16,8 +16,10 @@ def get_movies():
     limit = request.args.get("limit", 6, type=int)
     skip = request.args.get("skip", 0, type=int)
 
-    # Get User ID from JWT Auth
-    user_id = current_user["userId"] if current_user is not None else None
+    # Get User ID from JWT Auth - handle the case where user is not logged in
+    user_id = None
+    if current_user and isinstance(current_user, dict):
+        user_id = current_user.get("userId")
 
     # Create a new MovieDAO Instance
     dao = MovieDAO(current_app.driver)
@@ -33,8 +35,10 @@ def get_movies():
 @movie_routes.get('/<movie_id>')
 @jwt_required(optional=True)
 def get_movie_details(movie_id):
-    # Get User ID from JWT Auth
-    user_id = current_user["userId"] if current_user is not None else None
+    # Get User ID from JWT Auth - handle the case where user is not logged in
+    user_id = None
+    if current_user and isinstance(current_user, dict):
+        user_id = current_user.get("userId")
 
     # Create a new MovieDAO Instance
     dao = MovieDAO(current_app.driver)
@@ -65,8 +69,10 @@ def get_movie_ratings(movie_id):
 @movie_routes.get('/<movie_id>/similar')
 @jwt_required(optional=True)
 def get_similar_movies(movie_id):
-    # Get User ID from JWT Auth
-    user_id = current_user["userId"] if current_user is not None else None
+    # Get User ID from JWT Auth - handle the case where user is not logged in
+    user_id = None
+    if current_user and isinstance(current_user, dict):
+        user_id = current_user.get("userId")
 
     # Extract pagination values from the request
     limit = request.args.get("limit", 6, type=int)
