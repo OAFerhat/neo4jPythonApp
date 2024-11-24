@@ -11,14 +11,18 @@ class MovieDAO:
         if user_id is None:
             return []
 
-        with get_db_transaction(session) as tx:
-            result = tx.run("""
-                MATCH (u:User {userId: $userId})-[:HAS_FAVORITE]->(m:Movie)
-                RETURN collect(m.tmdbId) AS favorites
-            """, userId=user_id)
+        try:
+            with get_db_transaction(session) as tx:
+                result = tx.run("""
+                    MATCH (u:User {userId: $userId})-[:HAS_FAVORITE]->(m:Movie)
+                    RETURN collect(m.tmdbId) AS favorites
+                """, userId=user_id)
 
-            record = result.single()
-            return record["favorites"] if record else []
+                record = result.single()
+                return record["favorites"] if record else []
+        except Exception as e:
+            print(f"Error getting user favorites: {str(e)}")
+            return []
 
     def all(self, sort, order, limit=6, skip=0, user_id=None):
         with get_db_session(self.driver) as session:
@@ -51,33 +55,39 @@ class MovieDAO:
 
     def get_by_genre(self, name, sort='title', order='ASC', limit=6, skip=0, user_id=None):
         with get_db_session(self.driver) as session:
-            # Get user favorites first
-            favorites = self.get_user_favorites(session, user_id)
-            
-            # Execute main query
-            with get_db_transaction(session) as tx:
-                order_direction = "DESC" if order.upper() == "DESC" else "ASC"
-                cypher = f"""
-                    MATCH (m:Movie)-[:IN_GENRE]->(g:Genre {{name: $name}})
-                    WHERE m.`{sort}` IS NOT NULL
-                    RETURN m {{
-                        .*,
-                        favorite: m.tmdbId IN $favorites
-                    }} AS movie
-                    ORDER BY m.`{sort}` {order_direction}
-                    SKIP $skip
-                    LIMIT $limit
-                """
+            try:
+                # Get user favorites first
+                favorites = self.get_user_favorites(session, user_id)
+                
+                # Execute main query
+                with get_db_transaction(session) as tx:
+                    order_direction = "DESC" if order.upper() == "DESC" else "ASC"
+                    cypher = f"""
+                        MATCH (m:Movie)-[:IN_GENRE]->(g:Genre {{name: $name}})
+                        WHERE m.`{sort}` IS NOT NULL
+                        RETURN m {{
+                            .*,
+                            favorite: m.tmdbId IN $favorites
+                        }} AS movie
+                        ORDER BY m.`{sort}` {order_direction}
+                        SKIP $skip
+                        LIMIT $limit
+                    """
 
-                result = tx.run(
-                    cypher,
-                    name=name,
-                    favorites=favorites,
-                    skip=skip,
-                    limit=limit
-                )
+                    result = tx.run(
+                        cypher,
+                        name=name,
+                        favorites=favorites,
+                        skip=skip,
+                        limit=limit
+                    )
 
-                return [row.get("movie") for row in result]
+                    movies = [row.get("movie") for row in result]
+                    print(f"Found {len(movies)} movies for genre {name}, user_id: {user_id}, favorites: {favorites}")
+                    return movies
+            except Exception as e:
+                print(f"Error in get_by_genre: {str(e)}")
+                return []
 
     def get_for_actor(self, id, sort='title', order='ASC', limit=6, skip=0, user_id=None):
         with get_db_session(self.driver) as session:

@@ -29,8 +29,10 @@ def get_genre(genre_name):
 @genre_routes.get('/<genre_name>/movies')
 @jwt_required(optional=True)
 def get_genre_movies(genre_name):
-    # Get User ID from JWT Auth
-    user_id = current_user["sub"] if current_user != None else None
+    # Get User ID from JWT Auth - handle the case where current_user might be a dict or None
+    user_id = None
+    if current_user is not None and isinstance(current_user, dict):
+        user_id = current_user.get("sub")
 
     # Get Pagination Values
     sort = request.args.get("sort", "title")
