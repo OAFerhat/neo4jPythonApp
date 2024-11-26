@@ -25,6 +25,9 @@ def create_app(test_config=None):
     static_folder = os.path.join(os.path.dirname(__file__), '..', 'public')
     app = Flask(__name__, static_url_path='/', static_folder=static_folder)
 
+    # Disable strict slashes
+    app.url_map.strict_slashes = False
+
     app.config.from_mapping(
         NEO4J_URI=os.getenv('NEO4J_URI'),
         NEO4J_USERNAME=os.getenv('NEO4J_USERNAME'),

@@ -16,3 +16,6 @@ build/
 neoflix/
 .DS_Store
 .env
+
+# Dump files
+*.dump

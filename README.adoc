@@ -56,3 +56,10 @@ kill 2 processes:               kill -9 223 224
 kill all processes:             killall python
 run the tests:                  ./neopy1venv/bin/pytest tests/ -v
 run one tests:                  ./neopy1venv/bin/pytest tests/01_connect_to_neo4j__test.py
+
+
+Launch the database: https://sandbox.neo4j.com/   / Recommandations
+cypher to see a user with his actions on movies:    match (u:User {email:'oaferhat@gmail.com'}) -[]-(m:Movie) return u,m
+
+email: oaferhat@gmail.com
+Password: Test1234
